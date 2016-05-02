@@ -97,7 +97,7 @@ if __name__ == '__main__':
     product_neighbors = {}
     # {product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
 
-    bis, bus, Ravg = make_dictionaries(product_customer_rank,
+    bus, bis, Ravg = make_dictionaries(product_customer_rank,
                                        customer_product_rank,
                                        customer_product_list,
                                        product_neighbors)
