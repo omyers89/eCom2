@@ -4,12 +4,22 @@ import csv
 import numpy as np
 from datetime import datetime,time, timedelta
 
+
+
 def make_dictionaries(product_customer_rank, customer_product_rank,customer_product_list,product_neighbors):
+    '''
+    this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's
+    :param product_customer_rank:
+    :param customer_product_rank:
+    :param customer_product_list:
+    :param product_neighbors:
+    :return: R_avg, Bu's, Bi's
+    '''
     with open("P_C_matrix.csv", "r") as csv_file:
         reader = csv.DictReader(csv_file)
-        # remember : field_names = ['Product_ID', 'Customer_ID','Customer_rank' ]
+        #field_names = ['Product_ID', 'Customer_ID','Customer_rank' ]
         rank_sum = 0
-        custom_rank_dict = {}
+        custom_rank_dict = {} #helper dictionary to create Bu's
         Bus_dict = {}
         product_rank_dict = {}
         Bis_dict = {}
@@ -49,9 +59,12 @@ def make_dictionaries(product_customer_rank, customer_product_rank,customer_prod
             else:
                 product_neighbors[row['Product1_ID']] = [row['Product2_ID']]
     csv_file_2.close()
-    return Bus_dict, Bis_dict, float(rank_sum)/float(len(product_customer_rank))
+    r_avg = float(rank_sum)/float(len(product_customer_rank))
+    return r_avg, Bus_dict, Bis_dict
 
 
+
+#dont use these two:\/
 
 def make_Bus(customer_product_rank):
     custom_rank_dict = {}
@@ -97,7 +110,7 @@ if __name__ == '__main__':
     product_neighbors = {}
     # {product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
 
-    bus, bis, Ravg = make_dictionaries(product_customer_rank,
+    rvg, bus, bis = make_dictionaries(product_customer_rank,
                                        customer_product_rank,
                                        customer_product_list,
                                        product_neighbors)
@@ -118,13 +131,13 @@ if __name__ == '__main__':
 
         # if i == 3 : break
     print "this is 20 first bus"
-    #bus = make_Bus(customer_product_rank)
+
     for i, rec in enumerate(bus.items()):
         print rec
         if i > 20: break
 
     print "this is 20 first bis"
-    #bis = make_Bis(product_customer_rank)
+
     for i, rec in enumerate(bis.items()):
         print rec
         if i > 20: break
