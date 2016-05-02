@@ -1,6 +1,7 @@
 
 import csv
 
+import numpy as np
 
 
 def make_dictionaries(product_customer_rank, customer_product_rank,customer_product_list,product_neighbors):
@@ -23,6 +24,16 @@ def make_dictionaries(product_customer_rank, customer_product_rank,customer_prod
                 product_neighbors[row['Product1_ID']] = [row['Product2_ID']]
     csv_file_2.close()
 
+
+def make_Bus(customer_product_rank):
+    custom_rank_dict = {}
+    Bus_dict = {}
+    for (k,v) in customer_product_rank.items():
+        custom_rank_dict[k[0]] = v
+    for (kk, vl) in custom_rank_dict.items():
+        Bus_dict[kk] = np.average(np.array(vl))
+        print kk,vl
+    return Bus_dict
 
 if __name__ == '__main__':
     product_customer_rank = {}
@@ -54,3 +65,4 @@ if __name__ == '__main__':
 
 
         if i == 3 : break
+    make_Bus(customer_product_rank)
