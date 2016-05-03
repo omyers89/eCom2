@@ -43,10 +43,11 @@ def make_dictionaries(product_customer_rank, customer_product_rank,customer_prod
                 product_rank_dict[p] = np.append(product_rank_dict[p], r)
             else:
                 product_rank_dict[p] = np.array([r])
+    r_avg = float(rank_sum) / float(len(product_customer_rank))
     for (ku, vlu) in custom_rank_dict.items():
-        Bus_dict[ku] = (np.average(vlu), vlu.size)
+        Bus_dict[ku] = np.average(vlu) - r_avg
     for (ki, vli) in product_rank_dict.items():
-        Bis_dict[ki] = (np.average(vli), vli.size)
+        Bis_dict[ki] = np.average(vli) - r_avg
 
     csv_file.close()
 
@@ -59,7 +60,7 @@ def make_dictionaries(product_customer_rank, customer_product_rank,customer_prod
             else:
                 product_neighbors[row['Product1_ID']] = [row['Product2_ID']]
     csv_file_2.close()
-    r_avg = float(rank_sum)/float(len(product_customer_rank))
+
     return r_avg, Bus_dict, Bis_dict
 
 
@@ -96,6 +97,29 @@ def make_Bis(product_customer_rank):
 
     return Bis_dict
 
+
+def make_r_orig(customer_product_rank):
+    customer_dict = {}
+    for (c,p),v in customer_product_rank.items():
+        if c in customer_dict:
+            customer_dict[c][p] = v
+        else:
+            customer_dict[c] = {}
+            customer_dict[c][p] = v
+    return customer_dict
+
+
+#
+def make_r_roof(rvg, bus, bis):
+    customer_dict = {}
+    for u,bu in bus.items():
+        customer_dict[u]={}
+        for i, bi in bis.items():
+            customer_dict[u][i] = rvg + bu + bi
+
+    return customer_dict
+
+
 if __name__ == '__main__':
     t1 = datetime.now()
     product_customer_rank = {}
@@ -114,7 +138,12 @@ if __name__ == '__main__':
                                        customer_product_rank,
                                        customer_product_list,
                                        product_neighbors)
-
+    # r_orig = make_r_orig(customer_product_rank)
+    r_roof = make_r_roof(rvg, bus, bis)
+    for i, rec in enumerate(r_roof.items()):
+        print rec[1].items()[:10]
+        if i > 20: break
+    #
     # for i,d in enumerate(product_customer_rank):
     #     cmr = d[1]
     #     prd = d[0]
@@ -130,17 +159,17 @@ if __name__ == '__main__':
 
 
         # if i == 3 : break
-    print "this is 20 first bus"
-
-    for i, rec in enumerate(bus.items()):
-        print rec
-        if i > 20: break
-
-    print "this is 20 first bis"
-
-    for i, rec in enumerate(bis.items()):
-        print rec
-        if i > 20: break
+    # print "this is 20 first bus"
+    #
+    # for i, rec in enumerate(bus.items()):
+    #     print rec
+    #     if i > 20: break
+    #
+    # print "this is 20 first bis"
+    #
+    # for i, rec in enumerate(bis.items()):
+    #     print rec
+    #     if i > 20: break
 
     t2 = datetime.now()
     print (t2 - t1)
