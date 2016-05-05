@@ -1,6 +1,6 @@
 
 import csv
-
+from sys import stdout
 import numpy as np
 from math import sqrt, fabs
 
@@ -71,10 +71,10 @@ def make_dictionaries(product_customer_rank, customer_product_rank,customer_prod
 
 
 class r_roof_table():
-    def __init__(self, rvg, bu_dict,bi_dict):
-        r_avg = rvg
-        bus = bu_dict
-        bis = bi_dict
+    def __init__(self, rvg, bu_dict, bi_dict):
+        self.r_avg = rvg
+        self.bus = bu_dict
+        self.bis = bi_dict
 
     def get_bu(self, user_id):
         if user_id in self.bus:
@@ -88,14 +88,14 @@ class r_roof_table():
         else:
             return 0
 
-    def get_val_ui(self,u,i):
+    def get(self,u,i):
         val_ui = self.r_avg + self.get_bu(u) + self.get_bi(i)
         return val_ui
 
 class r_tilda_table():
     def __init__(self, r_orig, r_roof):
-        r_table = r_orig
-        roof = r_roof
+        self.r_table = r_orig
+        self.roof = r_roof
     def get_r(self,user_id, product_id):
         if (user_id, product_id) in self.r_table:
             return self.r_table[(user_id, product_id)]
@@ -110,24 +110,24 @@ class r_tilda_table():
         products = [p for p in self.roof.bis]
         return products
 
-    def get_tilda_ui(self, u,i):
+    def get(self, u,i):
         r_ui = self.get_r(u,i)
         if r_ui > 0:
-            return r_ui - self.roof.get_val_ui(u,i)
+            return r_ui - self.roof.get(u,i)
         else:
             return 0.0
 
     def get_prod_np(self, product_id):
-        pnp = np.array() #np array of the tilda value of all users in r_tilda[u][product_id]
-        for u in self.get_users():
-            np.append(pnp, self.get_tilda_ui(u,product_id))
+        pnp = np.array([]) #np array of the tilda value of all users in r_tilda[u][product_id]
+        for uu in self.get_users():
+            pnp = np.append(pnp, self.get(uu,product_id))
 
         return pnp
 
 
 class d_table():
     def __init__(self, r_tilda):
-        tildas = r_tilda
+        self.tildas = r_tilda
 
     def get_users(self):
         user_list = self.tildas.get_users()
@@ -137,43 +137,69 @@ class d_table():
         sim_list = []
         for p in self.tildas.get_products():
             if not p == product_id:
-                sim_list.append(p , self.get_d_ij(product_id,p))
+                sim_list.append((p , self.get(product_id,p)))
 
         sim_list.sort(key=lambda x: x[1])
         return sim_list[-l:]
 
-    def get_d_ij(self,i,j):
-        users = self.get_users()
+    def get(self,i,j):
+        # users = self.get_users()
 
         ris = self.tildas.get_prod_np(i) # all Rui
         rjs = self.tildas.get_prod_np(j) # all Ruj
         numerator = np.dot(ris, np.transpose(rjs))  # sum of Rui*Ruj
-        denumerator = sqrt(sum(ris^2)) * sqrt(sum(rjs^2))
+        denumerator = sqrt(sum(np.power(ris, 2))) * sqrt(sum(np.power(rjs, 2)))
         return float(numerator)/float(denumerator)
 
 
 
 class r_roof_new():
-    def __init__(self, roof_table, d_table, tilda_table):
-        roofs = roof_table
-        ds = d_table
-        tildas = tilda_table
-
-    def get_new_ui(self,u,i):
-        roof_ui = self.roofs.get_val_ui(u,i)
-        d_similars = self.ds.l_most_similar(i)
+    def __init__(self, roof_table, d_table, tilda_table, n_sim=7):
+        self.roofs = roof_table
+        self.ds = d_table
+        self.tildas = tilda_table
+        self.l = n_sim
+    def get(self,u,i):
+        roof_ui = self.roofs.get(u,i)
+        d_similars = self.ds.l_most_similar(i , self.l)
         numer = 0
         denumer = 0
         for (sim_product, d_val) in d_similars:
-            d_ij = self.ds.get_d_ij(i,sim_product)
-            r_uj = self.tildas.get_tilda_ui(u, sim_product)
+            d_ij = self.ds.get(i,sim_product)
+            r_uj = self.tildas.get(u, sim_product)
             numer +=  d_ij * r_uj
             denumer += fabs(d_ij)
         diff_ui = float(numer) / float(denumer)
         return roof_ui + diff_ui
 
+def print_tables(t , name):
+    print "this is:", name
+    for uuii in range(1, 5):
+        for ppjj in range(1, 5):
+            stdout.write(str(t.get(uuii, ppjj))[:4] +", \t\t")
+        stdout.write('\n')
+
+def test_tables():
+    c_p_rank = {(1,1):5,          (1,3):5, (1,4):2,
+                         (2,2):4, (2,3):4, (2,4):4,
+                (3,1):2, (3,2):4, (3,3):3, (3,4):3}
+    bus = {1:0.4, 2:0.4, 3:-0.6}
+    bis = {1:-0.1, 2:0.4, 3:0.4, 4:-0.6}
+    rvg = 3.6
+
+    r_orig = c_p_rank
+    r_roof = r_roof_table(rvg, bus, bis)
+    r_tilda = r_tilda_table(r_orig, r_roof)
+    D = d_table(r_tilda)
+    r_r_new = r_roof_new(r_roof, D, r_tilda, 2)
+
+    print_tables(r_roof, "r_roof")
+    print_tables(r_tilda, "r_tilda")
+    print_tables(D, "D")
+    print_tables(r_r_new, "r_roof_new")
+
 
 
 if __name__ == '__main__':
     print "try tables"
-    # test_tables()
+    test_tables()
