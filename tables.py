@@ -185,7 +185,10 @@ class d_table():
         rjs = self.tildas.get_prod_np(j) # all Ruj
         numerator = np.dot(ris, np.transpose(rjs))  # sum of Rui*Ruj
         denumerator = sqrt(sum(np.power(ris, 2))) * sqrt(sum(np.power(rjs, 2)))
-        return float(numerator)/float(denumerator)
+        if denumerator == 0:
+            return -1
+        else:
+            return float(numerator)/float(denumerator)
 
 
 
@@ -277,8 +280,12 @@ def csv_test(d_file, t_file, r_file):
     D = d_table(r_tilda)
     r_r_new = r_roof_new(r_roof, D, r_tilda, 2)
     test_dict = dicts['test_dict']
+    iit=0
     for (c_id, p_id) in test_dict:
         test_dict[p_id, c_id] = r_r_new.get(c_id, p_id)
+        iit += 1
+        r = str(iit) + "\r"
+        stdout.write(r)
 
     res_dict = dicts['res_dict']
 
