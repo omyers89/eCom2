@@ -274,18 +274,24 @@ def csv_test(d_file, t_file, r_file):
                               t_file,
                               r_file)
 
+    print 'make_dicts: Done'
     r_orig = dicts['customer_product_rank']
+
     r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
+    print 'rroof : Done'
     r_tilda = r_tilda_table(r_orig, r_roof)
     D = d_table(r_tilda)
+    print 'dd : Done'
     r_r_new = r_roof_new(r_roof, D, r_tilda, 2)
+
     test_dict = dicts['test_dict']
     iit=0
-    for (c_id, p_id) in test_dict:
-        test_dict[p_id, c_id] = r_r_new.get(c_id, p_id)
+    for (p_id, c_id) in test_dict:
         iit += 1
         r = str(iit) + "\r"
         stdout.write(r)
+        test_dict[p_id, c_id] = r_r_new.get(c_id, p_id)
+
 
     res_dict = dicts['res_dict']
 
