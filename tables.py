@@ -5,7 +5,7 @@ import numpy as np
 from math import sqrt, fabs
 from datetime import datetime
 
-def make_dictionaries(data_file, test_file, res_file = None):
+def make_dictionaries(data_file, test_file, res_file = None, short = False):
     '''
     this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's
     :param product_customer_rank:
@@ -27,6 +27,7 @@ def make_dictionaries(data_file, test_file, res_file = None):
         Bis_dict = {}
 
         # every row in  customer_product_rank is (key:(customer, product), value:rank
+        ai = 0
         for row in reader:
             r = int(row['Customer_rank'])
             c = row['Customer_ID']
@@ -45,7 +46,14 @@ def make_dictionaries(data_file, test_file, res_file = None):
                 product_rank_dict[p] = np.append(product_rank_dict[p], [r])
             else:
                 product_rank_dict[p] = np.array([r])
-    r_avg = float(rank_sum) / float(len(product_customer_rank))
+            ai+=1
+            if short and ai > 1000:
+                break
+    if short:
+        r_avg = float(rank_sum) / 1000.0
+    else:
+        r_avg = float(rank_sum) / float(len(product_customer_rank))
+
     for (ku, vlu) in custom_rank_dict.items():
         Bus_dict[ku] = np.average(vlu) - r_avg
     for (ki, vli) in product_rank_dict.items():
@@ -55,10 +63,14 @@ def make_dictionaries(data_file, test_file, res_file = None):
     test_dictionary = {}
     with open(test_file, "r") as csv_file_t:
         reader_t = csv.DictReader(csv_file_t)
+        bi = 0
         for row in reader_t:
             c = row['Customer_ID']
             p = row['Product_ID']
             test_dictionary[p,c] = 0
+            bi += 1
+            if short and bi > 10:
+                break
 
     csv_file_t.close()
 
@@ -67,11 +79,15 @@ def make_dictionaries(data_file, test_file, res_file = None):
         res_dictionary = {}
         with open(res_file, "r") as csv_file_r:
             reader_r = csv.DictReader(csv_file_r)
+            ci = 0
             for row in reader_r:
                 c = row['Customer_ID']
                 p = row['Product_ID']
                 r = row['Customer_rank']
                 res_dictionary[p, c] = r
+                ci += 1
+                if short and ci > 10:
+                    break
 
         csv_file_t.close()
     else:
@@ -206,10 +222,13 @@ class r_roof_new():
         for (sim_product, d_val) in d_similars:
             d_ij = self.ds.get(i,sim_product)
             r_uj = self.tildas.get(u, sim_product)
-            numer +=  d_ij * r_uj
+            numer += d_ij * r_uj
             denumer += fabs(d_ij)
-        diff_ui = float(numer) / float(denumer)
-        return roof_ui + diff_ui
+        if denumer == 0:
+            return roof_ui
+        else:
+            diff_ui = float(numer) / float(denumer)
+            return roof_ui + diff_ui
 
 def print_tables(t , name):
     print "this is:", name
@@ -254,7 +273,7 @@ def test_tables(traning_data, test_set):
     print_tables(D, "D")
     print_tables(r_r_new, "r_roof_new")
 
-def csv_test(d_file, t_file, r_file):
+def csv_test(d_file, t_file, r_file, short = False):
     product_customer_rank = {}
     # {(P_i,C_j):rank , (P_m,C_n):rank , .....}
 
@@ -272,7 +291,7 @@ def csv_test(d_file, t_file, r_file):
 
     dicts = make_dictionaries(d_file,
                               t_file,
-                              r_file)
+                              r_file, short)
 
     print 'make_dicts: Done'
     r_orig = dicts['customer_product_rank']
@@ -309,6 +328,6 @@ if __name__ == '__main__':
     # print "try tables"
     # test_tables()
     t1 = datetime.now()
-    csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv')
+    csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = True)
     t2 = datetime.now()
     print (t2 - t1)
