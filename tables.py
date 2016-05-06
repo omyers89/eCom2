@@ -83,7 +83,7 @@ def make_dictionaries(data_file, test_file, res_file = None, short = False):
             for row in reader_r:
                 c = row['Customer_ID']
                 p = row['Product_ID']
-                r = row['Customer_rank']
+                r = int(row['Customer_rank'])
                 res_dictionary[p, c] = r
                 ci += 1
                 if short and ci > 10:
@@ -216,11 +216,12 @@ class r_roof_new():
         self.l = n_sim
 
     def get(self,u,i):
+        print "in get r_roof_new 1"
         roof_ui = self.roofs.get(u,i)
         d_similars = self.ds.l_most_similar(i , self.l)
         numer = 0
         denumer = 0
-        print "in get r_roof_new"
+        print "in get r_roof_new 2"
         for (sim_product, d_val) in d_similars:
             d_ij = self.ds.get(i,sim_product)
             r_uj = self.tildas.get(u, sim_product)
