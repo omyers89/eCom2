@@ -214,16 +214,19 @@ class r_roof_new():
         self.ds = dr_table
         self.tildas = tilda_table
         self.l = n_sim
+
     def get(self,u,i):
         roof_ui = self.roofs.get(u,i)
         d_similars = self.ds.l_most_similar(i , self.l)
         numer = 0
         denumer = 0
+        print "in get r_roof_new"
         for (sim_product, d_val) in d_similars:
             d_ij = self.ds.get(i,sim_product)
             r_uj = self.tildas.get(u, sim_product)
             numer += d_ij * r_uj
             denumer += fabs(d_ij)
+            print sim_product
         if denumer == 0:
             return roof_ui
         else:
