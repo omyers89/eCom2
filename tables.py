@@ -320,7 +320,7 @@ def csv_test(d_file, t_file, r_file, short = False):
 
     rmse = 0
     for t in test_dict:
-        r_d = test_dict[t] - res_dict[t]
+        r_d = test_dict[t] - round(res_dict[t])
         rmse += pow(r_d, 2)
     norm_rmse = float(rmse) / float(len(test_dict))
     print "rmse is:"
