@@ -216,18 +216,18 @@ class r_roof_new():
         self.l = n_sim
 
     def get(self,u,i):
-        print "in get r_roof_new 1"
+        # print "in get r_roof_new 1"
         roof_ui = self.roofs.get(u,i)
         d_similars = self.ds.l_most_similar(i , self.l)
         numer = 0
         denumer = 0
-        print "in get r_roof_new 2"
+        # print "in get r_roof_new 2"
         for (sim_product, d_val) in d_similars:
             d_ij = self.ds.get(i,sim_product)
             r_uj = self.tildas.get(u, sim_product)
             numer += d_ij * r_uj
             denumer += fabs(d_ij)
-            print sim_product
+            # print sim_product
         if denumer == 0:
             return roof_ui
         else:
@@ -313,7 +313,7 @@ def csv_test(d_file, t_file, r_file, short = False):
         iit += 1
         r = str(iit) + "\r"
         stdout.write(r)
-        test_dict[p_id, c_id] = r_r_new.get(c_id, p_id)
+        test_dict[p_id, c_id] = r_roof.get(c_id, p_id)
 
 
     res_dict = dicts['res_dict']
@@ -332,6 +332,6 @@ if __name__ == '__main__':
     # print "try tables"
     # test_tables()
     t1 = datetime.now()
-    csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = True)
+    csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
     t2 = datetime.now()
     print (t2 - t1)
