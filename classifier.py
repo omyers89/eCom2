@@ -94,7 +94,8 @@ def run_linear_grid(model_name, training_set, train_set_labels, validation_set=N
                             best_solver = solver
                             best_rmse = train_rmse
                             print 'new solver found.'
-                            print 'best train_rmse is:{}, and valid_rmse is:{}'.format(best_rmse, valid_rmse)
+                            print 'best train_rmse is:',best_rmse
+                            print "best valid_rmse is:", valid_rmse
 
     print "coefs of the model are:"
     print best_solver.coef_dict
