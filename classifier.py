@@ -3,7 +3,7 @@ import csv
 # import sklearn.linear_model
 from math import sqrt
 import numpy as np
-
+from sys import stdout
 def calc_rmse_w(fbgcm, validation_set,validation_set_labels ):
     pred_res = fbgcm.predict(validation_set)
     with open('EX2.csv', 'w') as write_file:
@@ -81,14 +81,18 @@ class linear_solver():
 def run_linear_grid(model_name, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
     print "*********fiting model -", model_name,"**************"
     coef_hi_values = [x/6.2 for x in range(9,3,-1)]
-    coef_low_values = [y/6.2 for y in range(6,1,-1)]
+    coef_low_values = [y/6.2 for y in range(5,0,-1)]
 
     best_rmse = float('inf')
+    iit = 0
     for rvg in coef_hi_values:
         for buv in coef_hi_values:
             for biv in coef_hi_values:
                 for aa in coef_low_values:
                     for ar in coef_low_values:
+                        iit += 1
+                        r = str(iit) + "\r"
+                        stdout.write(r)
                         solver = linear_solver(rvg,buv,biv,aa,ar)
                         train_rmse = calc_rmse(solver, training_set, train_set_labels)
                         valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
