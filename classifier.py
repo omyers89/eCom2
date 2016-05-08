@@ -121,8 +121,8 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
     for rvg in new_coefs['rvg']:
         for buv in new_coefs['buv']:
             for biv in new_coefs['biv']:
-                for aa in new_coefs['aa']:
-                    for ar in new_coefs['ar']:
+                for aa in [0.15]: #new_coefs['aa']:
+                    for ar in [0.15]: # new_coefs['ar']:
                         solver = linear_solver(rvg,buv,biv,aa,ar)
                         train_rmse = calc_rmse(solver, training_set, train_set_labels)
                         valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
