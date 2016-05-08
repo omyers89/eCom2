@@ -4,8 +4,8 @@ from sys import stdout
 import numpy as np
 from math import sqrt, fabs
 from datetime import datetime
-
-def make_dictionaries(data_file, test_file, res_file = None, short = False):
+from classifier import run_linear_grid, run_linear_grid_rig
+def make_dictionaries(data_file, test_file, arcs_file,  res_file=None, short = False):
     '''
     this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's
     :param product_customer_rank:
@@ -55,9 +55,9 @@ def make_dictionaries(data_file, test_file, res_file = None, short = False):
         r_avg = float(rank_sum) / float(len(product_customer_rank))
 
     for (ku, vlu) in custom_rank_dict.items():
-        Bus_dict[ku] = np.average(vlu) - r_avg
+        Bus_dict[ku] = np.average(vlu)# - r_avg
     for (ki, vli) in product_rank_dict.items():
-        Bis_dict[ki] = np.average(vli) - r_avg
+        Bis_dict[ki] = np.average(vli)# - r_avg
 
     csv_file.close()
     test_dictionary = {}
@@ -93,24 +93,31 @@ def make_dictionaries(data_file, test_file, res_file = None, short = False):
     else:
         res_dictionary = None
 
-
-
-    # with open("Network_arcs.csv", "r") as csv_file_2:
-    #     reader2 = csv.DictReader(csv_file_2)
-    #     # remember : field_names = ['Product1_ID', 'Product2_ID']
-    #     for row in reader2:
-    #         if row['Product1_ID'] in product_neighbors:
-    #             product_neighbors[row['Product1_ID']].append(row['Product2_ID'])
-    #         else:
-    #             product_neighbors[row['Product1_ID']] = [row['Product2_ID']]
-    # csv_file_2.close()
+    neighbors_p1p2 = {}
+    rev_neighbors_p2p1 = {}
+    with open(arcs_file, "r") as csv_file_2:
+        reader2 = csv.DictReader(csv_file_2)
+        # remember : field_names = ['Product1_ID', 'Product2_ID']
+        for row in reader2:
+            if row['Product1_ID'] in neighbors_p1p2:
+                neighbors_p1p2[row['Product1_ID']].append(row['Product2_ID'])
+            else:
+                neighbors_p1p2[row['Product1_ID']] = [row['Product2_ID']]
+            if row['Product2_ID'] in rev_neighbors_p2p1:
+                rev_neighbors_p2p1[row['Product2_ID']].append(row['Product1_ID'])
+            else:
+                rev_neighbors_p2p1[row['Product2_ID']] = [row['Product1_ID']]
+    csv_file_2.close()
 
     return {'r_avg': r_avg,
             'Bus_dict': Bus_dict,
             'Bis_dict': Bis_dict,
             'customer_product_rank': customer_product_rank,
+            'product_customer_rank': product_customer_rank,
             'test_dict': test_dictionary,
-            'res_dict': res_dictionary
+            'res_dict': res_dictionary,
+            'arcs': neighbors_p1p2,
+            'rev_arcs': rev_neighbors_p2p1
             }
 
 
@@ -300,6 +307,7 @@ def csv_test(d_file, t_file, r_file, short = False):
     print 'make_dicts: Done'
     r_orig = dicts['customer_product_rank']
 
+
     r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
     print 'rroof : Done'
     r_tilda = r_tilda_table(r_orig, r_roof)
@@ -327,11 +335,243 @@ def csv_test(d_file, t_file, r_file, short = False):
     print sqrt(norm_rmse)
 
 
+class arc_table():
+    def __init__(self, c_p_ranks, arcs_dict, rev_arcs_dict):
+        self.ranks = c_p_ranks
+        self.arcs = arcs_dict
+        self.rev_arcs = rev_arcs_dict
+
+    def get(self,u,i, roof_pred):
+        r_sum = 0
+        r_num = 0
+        if i in self.rev_arcs:
+
+            for p in self.rev_arcs[i]:
+                if (u,p) in self.ranks:
+                    r_sum += self.ranks[(u,p)]
+                    r_num += 1
+
+        if r_num == 0:
+            r_res = roof_pred
+        else:
+            r_res = (float(r_sum) / r_num)
+            # print "for u:{} and p:{} r_res is: {}".format(u, i, r_res)
+
+        a_sum = 0
+        a_num = 0
+        if i in self.arcs:
+
+            for pa in self.arcs[i]:
+                if (u, pa) in self.ranks:
+                    a_sum += self.ranks[(u, pa)]
+                    a_num += 1
+        if a_num == 0:
+            a_res = roof_pred
+        else:
+
+            a_res = (float(a_sum) / a_num)
+            # print "for u:{} and p:{} a_res is: {}".format(u, i,a_res )
+
+        return r_res, a_res
+
+
+
+
+
+def base_line(dicts):
+    # dicts = make_dictionaries(d_file,
+    #                           t_file,
+    #                           r_file,
+    #                           arcs_file,
+    #                           short)
+
+    print 'make_dicts: Done'
+    r_orig = dicts['customer_product_rank']
+    r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
+    arcs = dicts['arcs']
+    rev_arcs = dicts['rev_arcs']
+    arc_pred = arc_table(r_orig, arcs, rev_arcs)
+    print 'rroof : Done'
+
+
+    test_dict = dicts['test_dict']
+    iit = 0
+    for (p_id, c_id) in test_dict:
+        iit += 1
+        r = str(iit) + "\r"
+        stdout.write(r)
+        roof_pred = r_roof.get(c_id, p_id)
+        simr_pred, sima_pred = arc_pred.get(c_id, p_id, roof_pred)
+        simr_pred -= roof_pred
+        sima_pred -= roof_pred
+        test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
+
+
+    res_dict = dicts['res_dict']
+
+    rmse = 0
+    for t in test_dict:
+        r_d = test_dict[t] - round(res_dict[t])
+        rmse += pow(r_d, 2)
+    norm_rmse = float(rmse) / len(test_dict)
+    print "rmse is:"
+    print sqrt(norm_rmse)
+
+
+def make_traning_set(dicts, valid = False):
+    r_orig = dicts['customer_product_rank']
+    r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
+    bus = dicts['Bus_dict']
+    bis = dicts['Bis_dict']
+    arcs = dicts['arcs']
+    rev_arcs = dicts['rev_arcs']
+    arc_pred = arc_table(r_orig, arcs, rev_arcs)
+    r_avg = dicts['r_avg']
+    print 'rroof : Done'
+
+    training_set = []
+    training_set_lables = []
+    iit = 0
+    for (c_id, p_id) in r_orig:
+        iit += 1
+        r = str(iit) + "\r"
+        stdout.write(r)
+        bu = r_avg
+        bi = r_avg
+        if c_id in bus:
+            bu = bus[c_id]
+        if p_id in bis:
+            bi = bis[p_id]
+        # roof_pred = r_roof.get(c_id, p_id)
+        simr_pred, sima_pred = arc_pred.get(c_id, p_id, r_avg)
+        # simr_pred -= roof_pred
+        # sima_pred -= roof_pred
+        # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
+        training_set.append((r_avg, bu, bi, simr_pred, sima_pred))
+        training_set_lables.append(r_orig[(c_id,p_id)])
+
+    valid_set = []
+    valid_set_lables = []
+    valid_data = dicts['res_dict']
+    if valid == True:
+        for (p_id, c_id) in valid_data:
+            bu = r_avg
+            bi = r_avg
+            if c_id in bus:
+                bu = bus[c_id]
+            if p_id in bis:
+                bi = bis[p_id]
+            roof_pred = r_roof.get(c_id, p_id)
+            simr_pred, sima_pred = arc_pred.get(c_id, p_id, roof_pred)
+            # simr_pred -= roof_pred
+            # sima_pred -= roof_pred
+            # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
+            valid_set.append((r_avg, bu, bi, simr_pred, sima_pred))
+            valid_set_lables.append([(p_id, c_id), (valid_data[(p_id, c_id)])])
+
+    return training_set, training_set_lables, valid_set, valid_set_lables
+
+
+def make_training_set_dicts(dicts, valid = True):
+    r_orig = dicts['customer_product_rank']
+    r_p_c = dicts['product_customer_rank']
+    r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
+    bus = dicts['Bus_dict']
+    bis = dicts['Bis_dict']
+    arcs = dicts['arcs']
+    rev_arcs = dicts['rev_arcs']
+    arc_pred = arc_table(r_orig, arcs, rev_arcs)
+    r_avg = dicts['r_avg']
+    print 'rroof : Done'
+
+
+    valid_data = dicts['res_dict']
+
+    data_set = {'base_line1': {'train': [], 'test': []}}
+                #'base_line2': {'train': [], 'test': []}}
+                # 'com_linear': {'train': [], 'test': []},
+                # 'non_linear': {'train': [], 'test': []},
+                # 'crazy_model': {'train': [], 'test': []}}
+    labels_set = {'train': [], 'test': []}
+
+    # iit = 0
+    for (sett, typpe) in [(r_p_c, 'train'), (valid_data, 'test')]:
+        iit = 0
+        for (p_id, c_id) in sett:
+            iit += 1
+            r = str(iit) + "\r"
+            stdout.write(r)
+            bu = r_avg
+            bi = r_avg
+            if c_id in bus:
+                bu = bus[c_id]
+            if p_id in bis:
+                bi = bis[p_id]
+            roof_pred = r_roof.get(c_id, p_id)
+            simr_pred, sima_pred = arc_pred.get(c_id, p_id, r_avg)
+            # simr_pred -= roof_pred
+            # sima_pred -= roof_pred
+            # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
+            data_set['base_line1'][typpe].append((r_avg, bu-r_avg, bi - r_avg, simr_pred - r_avg, sima_pred-r_avg))
+            #data_set['base_line2'][typpe].append((r_avg, bu, bi, simr_pred, sima_pred))
+            # data_set['com_linear'][typpe].append((r_avg, bu, bi, bu-r_avg, bi-r_avg, simr_pred, sima_pred, (simr_pred+sima_pred)/2.0))
+            # data_set['non_linear'][typpe].append((r_avg, bu, bi, bu**2, bi**2, simr_pred, sima_pred, ((simr_pred+sima_pred)/2.0)**2 ))
+            # data_set['crazy_model'][typpe].append((r_avg, bu, bi, (bu-r_avg)**3, (bi-r_avg)**3, simr_pred, sima_pred, ((simr_pred+sima_pred)/2.0)**2))
+            labels_set[typpe].append(sett[(p_id, c_id)])
+
+        # valid_set = []
+        # valid_set_lables = []
+    # valid_data = dicts['res_dict']
+    # if valid == True:
+    #     for (p_id, c_id) in valid_data:
+    #         bu = r_avg
+    #         bi = r_avg
+    #         if c_id in bus:
+    #             bu = bus[c_id]
+    #         if p_id in bis:
+    #             bi = bis[p_id]
+    #         roof_pred = r_roof.get(c_id, p_id)
+    #         simr_pred, sima_pred = arc_pred.get(c_id, p_id, roof_pred)
+    #         # simr_pred -= roof_pred
+    #         # sima_pred -= roof_pred
+    #         # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
+    #         valid_set.append((r_avg, bu, bi, simr_pred, sima_pred))
+    #         valid_set_lables.append([(p_id, c_id), (valid_data[(p_id, c_id)])])
+
+    return data_set, labels_set
+
+
+def find_params(adicts):
+    #tr_set, tr_set_l, val_set, val_set_l = make_traning_set(adicts, True)
+    training_dicts, labels_set_dicts = make_training_set_dicts(adicts, True)
+    # run_bagging(tr_set, tr_set_l, val_set, val_set_l, True)
+    # run_log_class(tr_set, tr_set_l, val_set, val_set_l, True)
+    td = 'base_line1'
+    datas = training_dicts[td]
+    bs, br = run_linear_grid(td, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
+    bbs, bbr = run_linear_grid_rig(td,bs.coef_dict, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
+    # run_bagging_lin(tr_set, tr_set_l, val_set, val_set_l, True)
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     # print "try tables"
     # test_tables()
     t1 = datetime.now()
-    csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
+
+    d_file = '15-fold_0_training.csv'
+    t_file = '15-fold_0_test.csv'
+    r_file = '15-fold_0_test_labeled.csv'
+    arcs_file = 'Network_arcs.csv'
+    short = True
+    all_dicts = make_dictionaries(d_file, t_file, arcs_file,r_file, short)
+    # csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
+    # base_line(all_dicts)
+    find_params(all_dicts)
     t2 = datetime.now()
     print (t2 - t1)
