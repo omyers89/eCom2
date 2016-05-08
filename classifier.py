@@ -105,8 +105,8 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
     print "*********fiting model -", model_name,"**************"
     new_coefs = {}
     for c,v in base_coefs.items():
-        e_c = int(v*8)
-        new_coefs[c] = [x/16.0 for x in range(e_c-4,e_c+4)]
+        e_c = v
+        new_coefs[c] = [(e_c + x/16.0) for x in range(-4,+4)]
 
    #fintuning the coeffs
     best_rmse = float('inf')
