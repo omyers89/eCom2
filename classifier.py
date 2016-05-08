@@ -111,14 +111,14 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
     new_coefs = {}
     for c,v in base_coefs.items():
         e_c = v
-        new_coefs[c] = [(e_c + x/16.0) for x in range(-3,+3)]
+        new_coefs[c] = [(e_c + x/16.0) for x in range(-2,+2)]
 
    #fintuning the coeffs
     best_rmse = float('inf')
     for rvg in new_coefs['rvg']:
-        for buv in new_coefs['buv']:
-            for biv in new_coefs['biv']:
-                for arvg in [0.27, 0.3, 0.33]: #new_coefs['aa']:
+        for buv in [1.1]:#new_coefs['buv']:
+            for biv in [0.85]:#new_coefs['biv']:
+                for arvg in [0.33]: #new_coefs['aa']:
                     solver = linear_solver(rvg,buv,biv,arvg)
                     train_rmse = calc_rmse(solver, training_set, train_set_labels)
 
