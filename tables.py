@@ -5,6 +5,7 @@ import numpy as np
 from math import sqrt, fabs
 from datetime import datetime
 from classifier import run_linear_grid, run_linear_grid_rig
+
 def make_dictionaries(data_file, test_file, arcs_file,  res_file=None, short = False):
     '''
     this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's
