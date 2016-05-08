@@ -549,8 +549,9 @@ def find_params(adicts):
     # run_log_class(tr_set, tr_set_l, val_set, val_set_l, True)
     td = 'base_line1'
     datas = training_dicts[td]
-    # bs, br = run_linear_grid(td, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
-    co_dicts = {'biv': 0.33333333333333331, 'buv': 0.83333333333333337, 'aa': 0.33333333333333331, 'ar': 0.33333333333333331, 'rvg': 1.0}
+    bs, br = run_linear_grid(td, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
+    # co_dicts = {'biv': 0.33333333333333331, 'buv': 0.83333333333333337, 'aa': 0.33333333333333331, 'ar': 0.33333333333333331, 'rvg': 1.0}
+    co_dicts = bs.coef_dict
     bbs, bbr = run_linear_grid_rig(td,co_dicts, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
     # run_bagging_lin(tr_set, tr_set_l, val_set, val_set_l, True)
 
@@ -570,7 +571,7 @@ if __name__ == '__main__':
     t_file = '15-fold_0_test.csv'
     r_file = '15-fold_0_test_labeled.csv'
     arcs_file = 'Network_arcs.csv'
-    short = True
+    short = False
     all_dicts = make_dictionaries(d_file, t_file, arcs_file,r_file, short)
     # csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
     # base_line(all_dicts)

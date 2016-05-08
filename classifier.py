@@ -80,13 +80,15 @@ class linear_solver():
 
 def run_linear_grid(model_name, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
     print "*********fiting model -", model_name,"**************"
-    coef_values = [x/6.0 for x in range(2,9)]
+    coef_hi_values = [x/6.2 for x in range(9,3,-1)]
+    coef_low_values = [x/6.2 for x in range(6,1,-1)]
+
     best_rmse = float('inf')
-    for rvg in coef_values:
-        for buv in coef_values:
-            for biv in coef_values:
-                for aa in coef_values:
-                    for ar in coef_values:
+    for rvg in coef_hi_values:
+        for buv in coef_hi_values:
+            for biv in coef_hi_values:
+                for aa in coef_low_values:
+                    for ar in coef_low_values:
                         solver = linear_solver(rvg,buv,biv,aa,ar)
                         train_rmse = calc_rmse(solver, training_set, train_set_labels)
                         valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
@@ -96,13 +98,15 @@ def run_linear_grid(model_name, training_set, train_set_labels, validation_set=N
                             print 'new solver found.'
                             print 'best train_rmse is:',best_rmse
                             print "best valid_rmse is:", valid_rmse
+                            print "and coeffs are:"
+                            print best_solver.coef_dict
 
     print "coefs of the model are:"
     print best_solver.coef_dict
     return best_solver,best_rmse
 
 def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
-    print "*********fiting model -", model_name,"**************"
+    print "*********fiting rig model -", model_name,"**************"
     new_coefs = {}
     for c,v in base_coefs.items():
         e_c = v
