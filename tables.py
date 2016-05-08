@@ -511,11 +511,11 @@ def make_training_set_dicts(dicts, valid = True):
                 bi = bis[p_id]
             roof_pred = r_roof.get(c_id, p_id)
             simr_pred, sima_pred = arc_pred.get(c_id, p_id, r_avg)
-            # simr_pred -= roof_pred
-            # sima_pred -= roof_pred
+            simr_pred -= r_avg
+            sima_pred -= r_avg
             # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
             # print "bi is" , (bi - r_avg)
-            data_set['base_line1'][typpe].append((r_avg, bu-r_avg, bi - r_avg, sima_pred - r_avg, simr_pred-r_avg))
+            data_set['base_line1'][typpe].append(np.array([r_avg, bu-r_avg, bi - r_avg, (sima_pred + simr_pred)/2.0]))
             #data_set['base_line2'][typpe].append((r_avg, bu, bi, simr_pred, sima_pred))
             # data_set['com_linear'][typpe].append((r_avg, bu, bi, bu-r_avg, bi-r_avg, simr_pred, sima_pred, (simr_pred+sima_pred)/2.0))
             # data_set['non_linear'][typpe].append((r_avg, bu, bi, bu**2, bi**2, simr_pred, sima_pred, ((simr_pred+sima_pred)/2.0)**2 ))
@@ -552,7 +552,7 @@ def find_params(adicts):
     td = 'base_line1'
     datas = training_dicts[td]
     # bs, br = run_linear_grid(td, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
-    co_dicts = {'biv': 1.0, 'buv': 1.0, 'aa': 0.2, 'ar': 0.2, 'rvg': 1.0}
+    co_dicts = {'biv': 1.0, 'buv': 1.0, 'arvg': 0.3, 'rvg': 1.0}
     #co_dicts = bs.coef_dict
     bbs, bbr = run_linear_grid_rig(td,co_dicts, datas['train'], labels_set_dicts['train'], datas['test'], labels_set_dicts['test'], True)
     # run_bagging_lin(tr_set, tr_set_l, val_set, val_set_l, True)

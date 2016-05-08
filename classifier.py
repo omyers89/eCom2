@@ -49,24 +49,22 @@ def calc_rmse(fbgcm, validation_set,validation_set_labels ):
 
 class linear_solver():
 
-    def __init__(self,rvg,buv,biv,aa,ar):
+    def __init__(self,rvg,buv,biv,arvg):
         self.c_rvg = rvg
         self.c_buv = buv
         self.c_biv = biv
-        self.c_aa = aa
-        self.c_ar = ar
-        self.coef_vec = np.array([self.c_rvg,self.c_buv,self.c_biv,self.c_aa,self.c_ar])
+        self.c_ar = arvg
+        self.coef_vec = np.array([self.c_rvg,self.c_buv,self.c_biv,self.c_ar])
 
         self.coef_dict = {'rvg': self.c_rvg,
                           'buv': self.c_buv,
                           'biv': self.c_biv,
-                           'aa': self.c_aa,
-                           'ar': self.c_ar}
+                         'arvg': self.c_ar}
 
     def predict(self, data):
         predictions = np.zeros(len(data))
         for i, d_vec in enumerate(data):
-            np_dvec = (np.array(d_vec)).transpose()
+            np_dvec = d_vec.transpose()
             predictions[i] = np.dot(self.coef_vec, np_dvec)
         return predictions
 
@@ -88,22 +86,21 @@ def run_linear_grid(model_name, training_set, train_set_labels, validation_set=N
     for rvg in coef_hi_values:
         for buv in coef_hi_values:
             for biv in coef_hi_values:
-                for aa in coef_low_values:
-                    for ar in coef_low_values:
-                        iit += 1
-                        r = str(iit) + "\r"
-                        stdout.write(r)
-                        solver = linear_solver(rvg,buv,biv,aa,ar)
-                        train_rmse = calc_rmse(solver, training_set, train_set_labels)
-                        valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
-                        if train_rmse < best_rmse:
-                            best_solver = solver
-                            best_rmse = train_rmse
-                            print 'new solver found.'
-                            print 'best train_rmse is:',best_rmse
-                            print "best valid_rmse is:", valid_rmse
-                            print "and coeffs are:"
-                            print best_solver.coef_dict
+                for arvg in coef_low_values:
+                    iit += 1
+                    r = str(iit) + "\r"
+                    stdout.write(r)
+                    solver = linear_solver(rvg,buv,biv,arvg)
+                    train_rmse = calc_rmse(solver, training_set, train_set_labels)
+                    valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
+                    if train_rmse < best_rmse:
+                        best_solver = solver
+                        best_rmse = train_rmse
+                        print 'new solver found.'
+                        print 'best train_rmse is:',best_rmse
+                        print "best valid_rmse is:", valid_rmse
+                        print "and coeffs are:"
+                        print best_solver.coef_dict
 
     print "coefs of the model are:"
     print best_solver.coef_dict
@@ -114,30 +111,67 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
     new_coefs = {}
     for c,v in base_coefs.items():
         e_c = v
-        new_coefs[c] = [(e_c + x/16.0) for x in range(-4,+4)]
+        new_coefs[c] = [(e_c + x/16.0) for x in range(-3,+3)]
 
    #fintuning the coeffs
     best_rmse = float('inf')
     for rvg in new_coefs['rvg']:
         for buv in new_coefs['buv']:
             for biv in new_coefs['biv']:
-                for aa in [0.15]: #new_coefs['aa']:
-                    for ar in [0.15]: # new_coefs['ar']:
-                        solver = linear_solver(rvg,buv,biv,aa,ar)
-                        train_rmse = calc_rmse(solver, training_set, train_set_labels)
+                for arvg in [0.27, 0.3, 0.33]: #new_coefs['aa']:
+                    solver = linear_solver(rvg,buv,biv,arvg)
+                    train_rmse = calc_rmse(solver, training_set, train_set_labels)
+
+                    if train_rmse < best_rmse:
                         valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
-                        if train_rmse < best_rmse:
-                            best_solver = solver
-                            best_rmse = train_rmse
-                            print 'new solver found.'
-                            print 'best train_rmse is:', best_rmse
-                            print "best valid_rmse is:", valid_rmse
-                            print "and coeffs are:"
-                            print best_solver.coef_dict
+                        best_solver = solver
+                        best_rmse = train_rmse
+                        print 'new solver found.'
+                        print 'best train_rmse is:', best_rmse
+                        print "best valid_rmse is:", valid_rmse
+                        print "and coeffs are:"
+                        print best_solver.coef_dict
 
     print "coefs of the model are:"
     print best_solver.coef_dict
     return best_solver,best_rmse
+
+
+
+# def thred_calc(rv,bu,bi,training_set, train_set_labels, validation_set, validation_set_labels):
+#     for aa in [0.15]:  # new_coefs['aa']:
+#         for ar in [0.15]:  # new_coefs['ar']:
+#             solver = linear_solver(rv, bu, bi, aa, ar)
+#             train_rmse = calc_rmse(solver, training_set, train_set_labels)
+#             valid_rmse = calc_rmse(solver, validation_set, validation_set_labels)
+#             if train_rmse < best_rmse:
+#                 best_solver = solver
+#                 best_rmse = train_rmse
+#                 print 'new solver found.'
+#                 print 'best train_rmse is:', best_rmse
+#                 print "best valid_rmse is:", valid_rmse
+#                 print "and coeffs are:"
+#                 print best_solver.coef_dict
+#
+# def run_linear_grid_rig_threading(model_name, base_coefs, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
+#     print "*********fiting rig model -", model_name,"**************"
+#     new_coefs = {}
+#     for c,v in base_coefs.items():
+#         e_c = v
+#         new_coefs[c] = [(e_c + x/16.0) for x in range(-4,+4)]
+#
+#    #fintuning the coeffs
+#     best_rmse = float('inf')
+#     for rvg in new_coefs['rvg']:
+#         for buv in new_coefs['buv']:
+#             for biv in new_coefs['biv']:
+#                 thred_calc(rvg,buv,biv,training_set, train_set_labels, validation_set, validation_set_labels)
+#
+#
+#     print "coefs of the model are:"
+#     print best_solver.coef_dict
+#     return best_solver,best_rmse
+
 
 
 
