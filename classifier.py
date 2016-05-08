@@ -124,6 +124,8 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
                             print 'new solver found.'
                             print 'best train_rmse is:', best_rmse
                             print "best valid_rmse is:", valid_rmse
+                            print "and coeffs are:"
+                            print best_solver.coef_dict
 
     print "coefs of the model are:"
     print best_solver.coef_dict
