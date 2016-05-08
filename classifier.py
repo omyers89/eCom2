@@ -81,7 +81,7 @@ class linear_solver():
 def run_linear_grid(model_name, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
     print "*********fiting model -", model_name,"**************"
     coef_hi_values = [x/6.2 for x in range(9,3,-1)]
-    coef_low_values = [x/6.2 for x in range(6,1,-1)]
+    coef_low_values = [y/6.2 for y in range(6,1,-1)]
 
     best_rmse = float('inf')
     for rvg in coef_hi_values:
