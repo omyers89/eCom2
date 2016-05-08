@@ -571,7 +571,11 @@ if __name__ == '__main__':
     t_file = '15-fold_0_test.csv'
     r_file = '15-fold_0_test_labeled.csv'
     arcs_file = 'Network_arcs.csv'
-    short = False
+    pref = raw_input("choose long or short: (L or S)")
+    if pref == "L":
+        short = False
+    elif pref == "S":
+        short =True
     all_dicts = make_dictionaries(d_file, t_file, arcs_file,r_file, short)
     # csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
     # base_line(all_dicts)
