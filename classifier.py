@@ -4,13 +4,14 @@ import csv
 from math import sqrt
 import numpy as np
 from sys import stdout
+
 def calc_rmse_w(fbgcm, validation_set,validation_set_labels ):
     pred_res = fbgcm.predict(validation_set)
-    with open('EX2.csv', 'w') as write_file:
+    with open('EX2o.csv', 'w') as write_file:
         writer = csv.writer(write_file, lineterminator='\n')
         fieldnames2 = ["Proudct_ID", "Customer_ID", "Customer_rank"]
         writer.writerow(fieldnames2)
-        rmse = 0
+        # rmse = 0
         for l, p in zip(validation_set_labels, pred_res):
             # print  l[1], l[0], p
             if round(p) > 5:
@@ -19,15 +20,15 @@ def calc_rmse_w(fbgcm, validation_set,validation_set_labels ):
                 t_pred = 1
             else:
                 t_pred = round(p)
-            r_d = l - t_pred
-            rmse += pow(r_d, 2)
-            writer.writerow(['p', 'c', t_pred])
+            # r_d = l - t_pred
+            # rmse += pow(r_d, 2)
+            writer.writerow([l[0][0], l[0][1], t_pred])
     write_file.close
     # print pred_res[:10]
 
-    norm_rmse = float(rmse) / len(validation_set_labels)
-    print "rmse is:"
-    print sqrt(norm_rmse)
+    # norm_rmse = float(rmse) / len(validation_set_labels)
+    # print "rmse is:"
+    # print sqrt(norm_rmse)
 
 def calc_rmse(fbgcm, validation_set,validation_set_labels ):
     pred_res = fbgcm.predict(validation_set)
@@ -41,7 +42,7 @@ def calc_rmse(fbgcm, validation_set,validation_set_labels ):
             t_pred = 1
         else:
             t_pred = round(p)
-        r_d = l - t_pred
+        r_d = l[1] - t_pred
         rmse += pow(r_d, 2)
     norm_rmse = float(rmse) / len(validation_set_labels)
     return sqrt(norm_rmse)
@@ -104,6 +105,7 @@ def run_linear_grid(model_name, training_set, train_set_labels, validation_set=N
 
     print "coefs of the model are:"
     print best_solver.coef_dict
+    calc_rmse_w(best_solver, validation_set,validation_set_labels)
     return best_solver,best_rmse
 
 def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, validation_set=None, validation_set_labels=None , facc=False):
@@ -111,14 +113,14 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
     new_coefs = {}
     for c,v in base_coefs.items():
         e_c = v
-        new_coefs[c] = [(e_c + x/16.0) for x in range(-2,+2)]
+        new_coefs[c] = [(e_c + x/16.0) for x in range(-1,+3)]
 
    #fintuning the coeffs
     best_rmse = float('inf')
-    for rvg in new_coefs['rvg']:
-        for buv in [1.1]:#new_coefs['buv']:
+    for rvg in [1.13]:#new_coefs['rvg']:
+        for buv in [1.07]:#new_coefs['buv']:
             for biv in [0.85]:#new_coefs['biv']:
-                for arvg in [0.33]: #new_coefs['aa']:
+                for arvg in [0.31]: #new_coefs['aa']:
                     solver = linear_solver(rvg,buv,biv,arvg)
                     train_rmse = calc_rmse(solver, training_set, train_set_labels)
 
@@ -134,6 +136,7 @@ def run_linear_grid_rig(model_name, base_coefs, training_set, train_set_labels, 
 
     print "coefs of the model are:"
     print best_solver.coef_dict
+    calc_rmse_w(best_solver, validation_set, validation_set_labels)
     return best_solver,best_rmse
 
 

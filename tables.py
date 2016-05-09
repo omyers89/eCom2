@@ -353,7 +353,7 @@ class arc_table():
                     r_num += 1
 
         if r_num == 0:
-            r_res = roof_pred
+            r_res = 0
         else:
             r_res = (float(r_sum) / r_num)
             # print "for u:{} and p:{} r_res is: {}".format(u, i, r_res)
@@ -373,7 +373,7 @@ class arc_table():
             a_res = (float(a_sum) / a_num)
             # print "for u:{} and p:{} a_res is: {}".format(u, i,a_res )
 
-        return r_res, a_res
+        return r_res,a_res,(r_res+a_res)/2.0
 
 
 
@@ -487,7 +487,8 @@ def make_training_set_dicts(dicts, valid = True):
     print 'rroof : Done'
 
 
-    valid_data = dicts['res_dict']
+    # valid_data = dicts['res_dict']
+    valid_data = dicts['test_dict']
 
     data_set = {'base_line1': {'train': [], 'test': []}}
                 #'base_line2': {'train': [], 'test': []}}
@@ -510,17 +511,17 @@ def make_training_set_dicts(dicts, valid = True):
             if p_id in bis:
                 bi = bis[p_id]
             roof_pred = r_roof.get(c_id, p_id)
-            simr_pred, sima_pred = arc_pred.get(c_id, p_id, r_avg)
-            simr_pred -= r_avg
-            sima_pred -= r_avg
+            simr_pred, sima_pred, sim_med = arc_pred.get(c_id, p_id, r_avg)
+            sim_med -= r_avg
+            # sima_pred -= r_avg
             # test_dict[p_id, c_id] = roof_pred + simr_pred + sima_pred
             # print "bi is" , (bi - r_avg)
-            data_set['base_line1'][typpe].append(np.array([r_avg, bu-r_avg, bi - r_avg, (sima_pred + simr_pred)/2.0]))
+            data_set['base_line1'][typpe].append(np.array([r_avg, bu-r_avg, bi - r_avg, sim_med]))
             #data_set['base_line2'][typpe].append((r_avg, bu, bi, simr_pred, sima_pred))
             # data_set['com_linear'][typpe].append((r_avg, bu, bi, bu-r_avg, bi-r_avg, simr_pred, sima_pred, (simr_pred+sima_pred)/2.0))
             # data_set['non_linear'][typpe].append((r_avg, bu, bi, bu**2, bi**2, simr_pred, sima_pred, ((simr_pred+sima_pred)/2.0)**2 ))
             # data_set['crazy_model'][typpe].append((r_avg, bu, bi, (bu-r_avg)**3, (bi-r_avg)**3, simr_pred, sima_pred, ((simr_pred+sima_pred)/2.0)**2))
-            labels_set[typpe].append(sett[(p_id, c_id)])
+            labels_set[typpe].append(((p_id, c_id), sett[(p_id, c_id)]))
 
         # valid_set = []
         # valid_set_lables = []
@@ -569,16 +570,16 @@ if __name__ == '__main__':
     # test_tables()
     t1 = datetime.now()
 
-    d_file = '15-fold_0_training.csv'
-    t_file = '15-fold_0_test.csv'
-    r_file = '15-fold_0_test_labeled.csv'
+    d_file = 'P_C_matrix.csv'
+    t_file = 'results.csv'
+    r_file = 'results.csv'
     arcs_file = 'Network_arcs.csv'
     pref = raw_input("choose long or short: (L or S)")
     if pref == "L":
         short = False
     elif pref == "S":
         short =True
-    all_dicts = make_dictionaries(d_file, t_file, arcs_file,r_file, short)
+    all_dicts = make_dictionaries(d_file, t_file, arcs_file,None, short)
     # csv_test('15-fold_0_training.csv', '15-fold_0_test.csv', '15-fold_0_test_labeled.csv', short = False)
     # base_line(all_dicts)
     find_params(all_dicts)

@@ -1,123 +1,315 @@
 
-from tables import make_dictionaries
 
-from datetime import datetime,time, timedelta
-
-
-
-
-
-
-#dont use these two:\/
-
-# def make_Bus(customer_product_rank):
-#     custom_rank_dict = {}
-#     Bus_dict = {}
-#     #every row in  customer_product_rank is (key:(customer, product), value:rank
-#     for ((c,p),v) in customer_product_rank.items():
-#         if c in custom_rank_dict:
-#             custom_rank_dict[c] = np.append(custom_rank_dict[c], v)
-#         else:
-#             custom_rank_dict[c] = np.array([v])
-#             # custom_rank_dict[c].append(v)
-#     for (kk, vl) in custom_rank_dict.items():
-#         Bus_dict[kk] = np.average(vl)
-#     return Bus_dict
-#
-# def make_Bis(product_customer_rank):
-#     product_rank_dict = {}
-#     Bis_dict = {}
-#     #every row in  customer_product_rank is (key:(customer, product), value:rank
-#     for ((p,c),v) in product_customer_rank.items():
-#         if p in product_rank_dict:
-#             product_rank_dict[p] = np.append(product_rank_dict[p], v)
-#         else:
-#             product_rank_dict[p] = np.array([v])
-#             # custom_rank_dict[c].append(v)
-#     for (kk, vl) in product_rank_dict.items():
-#         Bis_dict[kk] = (np.average(vl),vl.size)
-#
-#
-#     return Bis_dict
+from datetime import datetime
+import csv
+from sys import stdout
+import numpy as np
+from math import sqrt, fabs
+from datetime import datetime
+from classifier import run_linear_grid, run_linear_grid_rig
 
 
-def make_r_orig(customer_product_rank):
-    customer_dict = {}
-    for (c,p),v in customer_product_rank.items():
-        if c in customer_dict:
-            customer_dict[c][p] = v
+
+def make_dictionaries(data_file,  arcs_file,  test_file, res_file=None, short = False):
+    '''
+    this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's,
+    it was originaly used to estimate the coeff therefore contain some modified un used
+    parts.
+    :param product_customer_rank:
+    :param customer_product_rank:
+    :param customer_product_list:
+    :param product_neighbors:
+    :return: R_avg, Bu's, Bi's
+    '''
+    with open(data_file, "r") as csv_file:
+        reader = csv.DictReader(csv_file)
+        customer_product_rank = {}
+        product_customer_rank = {}
+        customer_product_list = []
+        #field_names = ['Product_ID', 'Customer_ID','Customer_rank' ]
+        rank_sum = 0
+        custom_rank_dict = {} #helper dictionary to create Bu's
+        Bus_dict = {}
+        product_rank_dict = {}
+        Bis_dict = {}
+
+        # every row in  customer_product_rank is (key:(customer, product), value:rank
+        ai = 0
+        for row in reader:
+            r = int(row['Customer_rank'])
+            c = row['Customer_ID']
+            p = row['Product_ID']
+            product_customer_rank[(p, c)] = r
+            customer_product_rank[(c, p)] = r
+            customer_product_list.append((row['Customer_ID'], row['Product_ID']))
+            rank_sum += r
+            #creating the Bu's
+            if c in custom_rank_dict:
+                custom_rank_dict[c] = np.append(custom_rank_dict[c], [r])
+            else:
+                custom_rank_dict[c] = np.array([r])
+            #creating the Bi's
+            if p in product_rank_dict:
+                product_rank_dict[p] = np.append(product_rank_dict[p], [r])
+            else:
+                product_rank_dict[p] = np.array([r])
+            ai+=1
+            if short and ai > 1000:
+                break
+    if short:
+        r_avg = float(rank_sum) / 1000.0
+    else:
+        r_avg = float(rank_sum) / float(len(product_customer_rank))
+
+    for (ku, vlu) in custom_rank_dict.items():
+        Bus_dict[ku] = np.average(vlu) - r_avg
+    for (ki, vli) in product_rank_dict.items():
+        Bis_dict[ki] = np.average(vli) - r_avg
+
+    csv_file.close()
+
+    #now making the dictionary of {[p,c] : pred} to predict
+    test_dictionary = {}
+    with open(test_file, "r") as csv_file_t:
+        reader_t = csv.DictReader(csv_file_t)
+        bi = 0
+        for row in reader_t:
+            c = row['Customer_ID']
+            p = row['Product_ID']
+            test_dictionary[p,c] = 0
+            bi += 1
+            if short and bi > 10:
+                break
+
+    csv_file_t.close()
+
+
+
+    #for training purposes make another (p,c):r dictionary with real results
+    if res_file:
+        res_dictionary = {}
+        with open(res_file, "r") as csv_file_r:
+            reader_r = csv.DictReader(csv_file_r)
+            ci = 0
+            for row in reader_r:
+                c = row['Customer_ID']
+                p = row['Product_ID']
+                r = int(row['Customer_rank'])
+                res_dictionary[p, c] = r
+                ci += 1
+                if short and ci > 10:
+                    break
+
+        csv_file_t.close()
+    else:
+        res_dictionary = None
+
+
+    #creat two dictionaries for relations between products
+    neighbors_p1p2 = {}
+    rev_neighbors_p2p1 = {}
+    with open(arcs_file, "r") as csv_file_2:
+        reader2 = csv.DictReader(csv_file_2)
+        # remember : field_names = ['Product1_ID', 'Product2_ID']
+        for row in reader2:
+            if row['Product1_ID'] in neighbors_p1p2:
+                neighbors_p1p2[row['Product1_ID']].append(row['Product2_ID'])
+            else:
+                neighbors_p1p2[row['Product1_ID']] = [row['Product2_ID']]
+            if row['Product2_ID'] in rev_neighbors_p2p1:
+                rev_neighbors_p2p1[row['Product2_ID']].append(row['Product1_ID'])
+            else:
+                rev_neighbors_p2p1[row['Product2_ID']] = [row['Product1_ID']]
+    csv_file_2.close()
+
+    return {'r_avg': r_avg,
+            'Bus_dict': Bus_dict,
+            'Bis_dict': Bis_dict,
+            'customer_product_rank': customer_product_rank,
+            'product_customer_rank': product_customer_rank,
+            'test_dict': test_dictionary,
+            'res_dict': res_dictionary,
+            'arcs': neighbors_p1p2,
+            'rev_arcs': rev_neighbors_p2p1
+            }
+
+
+
+class arc_table():
+    def __init__(self, c_p_ranks, arcs_dict, rev_arcs_dict):
+        self.ranks = c_p_ranks
+        self.arcs = arcs_dict
+        self.rev_arcs = rev_arcs_dict
+
+    def get(self,u,i, rvg):
+        r_sum = 0
+        r_num = 0
+        if i in self.rev_arcs:
+
+            for p in self.rev_arcs[i]:
+                if (u,p) in self.ranks:
+                    r_sum += self.ranks[(u,p)]
+                    r_num += 1
+
+        if r_num == 0:
+            r_res = rvg
         else:
-            customer_dict[c] = {}
-            customer_dict[c][p] = v
-    return customer_dict
+            r_res = (float(r_sum) / r_num)
+            # print "for u:{} and p:{} r_res is: {}".format(u, i, r_res)
+
+        a_sum = 0
+        a_num = 0
+        if i in self.arcs:
+
+            for pa in self.arcs[i]:
+                if (u, pa) in self.ranks:
+                    a_sum += self.ranks[(u, pa)]
+                    a_num += 1
+        if a_num == 0:
+            a_res = rvg
+        else:
+
+            a_res = (float(a_sum) / a_num)
+            # print "for u:{} and p:{} a_res is: {}".format(u, i,a_res )
+
+        return r_res,a_res, (r_res+a_res)/2.0-rvg
 
 
-#
-def make_r_roof(rvg, bus, bis):
-    customer_dict = {}
-    for u,bu in bus.items():
-        customer_dict[u]={}
-        for i, bi in bis.items():
-            customer_dict[u][i] = rvg + bu + bi
+def base_line(dicts):
 
-    return customer_dict
+    #prediction constants:
+    b0 = 1.1 #coef of r_avg
+    b1 = 1.05 #coef of bu
+    b2 = 0.85 #coef of bi
+    b3 = 0.4 #coef of similarity
+
+
+    r_avg = dicts['r_avg']
+    bus = dicts['Bus_dict']
+    bis = dicts['Bis_dict']
+
+    c_p_rank = dicts['customer_product_rank']
+    # r_roof = r_roof_table(dicts['r_avg'], dicts['Bus_dict'], dicts['Bis_dict'])
+    arcs = dicts['arcs']
+    rev_arcs = dicts['rev_arcs']
+    arc_pred = arc_table(c_p_rank, arcs, rev_arcs)
+
+    test_dict = dicts['test_dict']
+    iit = 0
+    for (p_id, c_id) in test_dict:
+        iit += 1
+        r = str(iit) + "\r"
+        stdout.write(r)
+        #roof_pred = r_roof.get(c_id, p_id)
+        bu = 0
+        bi = 0
+        if c_id in bus:
+            bu = bus[c_id]
+        if p_id in bis:
+            bi = bis[p_id]
+        simr_pred, sima_pred, avg_sim_norm = arc_pred.get(c_id, p_id, r_avg)
+        test_dict[p_id, c_id] = b0*r_avg + b1*bu + b2*bi + b3*avg_sim_norm
+
+    return test_dict
+
+
+def print_results(p_c_predictions, target_file):
+    with open(target_file, 'w') as write_file:
+        writer = csv.writer(write_file, lineterminator='\n')
+        fieldnames2 = ["Proudct_ID", "Customer_ID", "Customer_rank"]
+        writer.writerow(fieldnames2)
+        # rmse = 0
+        row_count = 0
+        for (p,c),r in p_c_predictions.items():
+
+            if round(r) > 5:
+                t_pred = 5
+            elif round(r) < 1:
+                t_pred = 1
+            else:
+                t_pred = round(r)
+
+            writer.writerow([p, c, int(t_pred)])
+            row_count +=1
+
+    write_file.close
+    return row_count
+
+
+def run_prediction(dicts, target_file):
+    p_c_predictions = base_line(dicts)
+    print_results(p_c_predictions, target_file)
+
+
+
+def calc_rmse(my_pred, real_labels):
+
+    c = len(real_labels)
+    diff_sum = 0
+    dbg_list = []
+    for (p,c),v in real_labels.items():
+        r_diff = v-my_pred[(p,c)]
+        if r_diff > 0:
+            dbg_list.append({'key': (p, c),
+                             'r_val': v,
+                             'my_val': my_pred[(p, c)]})
+
+        diff_sum += r_diff**2
+    rmses = float(diff_sum) / c
+    return sqrt(rmses), dbg_list
+
+def test_results(pred_file, real_res):
+    pred_dict = {}
+    with open(pred_file,'r') as predictions:
+        reader_p = csv.DictReader(predictions)
+        for row in reader_p:
+            r = int(row['Customer_rank'])
+            c = row['Customer_ID']
+            p = row['Product_ID']
+            pred_dict[(p, c)] = r
+    predictions.close()
+    real_dict = {}
+    with open(real_res, 'r') as labels:
+        reader_l = csv.DictReader(labels)
+        for row in reader_l:
+            r = int(row['Customer_rank'])
+            c = row['Customer_ID']
+            p = row['Product_ID']
+            real_dict[(p, c)] = r
+    labels.close()
+    rmse, db_list = calc_rmse(pred_dict, real_dict)
+    print "rmse is:", rmse
+    return db_list
+
 
 
 if __name__ == '__main__':
     t1 = datetime.now()
-    product_customer_rank = {}
-    # {(P_i,C_j):rank , (P_m,C_n):rank , .....}
 
-    customer_product_rank = {}
-    # {(C_i,P_j):rank , (C_m,P_n):rank , .....}
+    '''get the input from file "P_C_matrix.csv" and "Network_arcs.csv"
+    make the dictionaries
+    call the regression with the parameters
+    create the "EX2.csv" file'''
 
-    customer_product_list = []
-    # [(C_i,P_j), (C_m,P_n), .....]
+    data_file = "P_C_matrix.csv"
+    arcs_file = "Network_arcs.csv"
+    results_file = "results.csv"
+    target_file_name = "EX2.csv"
 
-    product_neighbors = {}
-    # {product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
+    pref = raw_input("choose long or short: (L or S)")
+    if pref == "L":
+        short = False
+    elif pref == "S":
+        short = True
 
-    rvg, bus, bis = make_dictionaries(product_customer_rank,
-                                       customer_product_rank,
-                                       customer_product_list,
-                                       product_neighbors)
-
-
-
-
-    # for i, rec in enumerate(r_roof.items()):
-    #     print rec[1].items()[:10]
-    #     if i > 20: break
-
-    print "we have {} users and {} products".format(len(bus), len(bis))
-
-    #
-    # for i,d in enumerate(product_customer_rank):
-    #     cmr = d[1]
-    #     prd = d[0]
-    #     print "pcr:"
-    #     print d, product_customer_rank[d]
-    #     print "cpr:"
-    #     print (cmr,prd), customer_product_rank[(cmr,prd)]
-    #     print "cpl:"
-    #     print customer_product_list[i]
-    #     print "pn:"
-    #     if prd in product_neighbors: print product_neighbors[prd]
-    #     else: print "none"
+    all_dicts = make_dictionaries(data_file,  arcs_file,  results_file, None, short )
+    run_prediction(all_dicts, target_file_name)
 
 
-        # if i == 3 : break
-    # print "this is 20 first bus"
-    #
-    # for i, rec in enumerate(bus.items()):
-    #     print rec
-    #     if i > 20: break
-    #
-    # print "this is 20 first bis"
-    #
-    # for i, rec in enumerate(bis.items()):
-    #     print rec
-    #     if i > 20: break
+    real_res_file = ""
+    if not real_res_file == "":
+        test_results(target_file_name, real_res_file)
+
 
     t2 = datetime.now()
     print (t2 - t1)
