@@ -179,7 +179,7 @@ class arc_table():
 
             a_res = (float(a_sum) / a_num)
             # print "for u:{} and p:{} a_res is: {}".format(u, i,a_res )
-        if not (r_res+a_res)/2.0-rvg == 0: print u,i,(r_res+a_res)/2.0-rvg
+        #DEBUG: if not (r_res+a_res)/2.0-rvg == 0: print u,i,(r_res+a_res)/2.0-rvg
         return r_res,a_res, (r_res+a_res)/2.0-rvg
 
 
