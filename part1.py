@@ -10,16 +10,17 @@ from classifier import run_linear_grid, run_linear_grid_rig
 
 
 
-def make_dictionaries(data_file,  arcs_file,  test_file, res_file=None, short = False):
+def make_dictionaries(data_file,  arcs_file,  test_file, validation_file=None, short = False):
     '''
     this function creates all the dictionaries and also calculate R_avg, Bu's, Bi's,
     it was originaly used to estimate the coeff therefore contain some modified un used
     parts.
-    :param product_customer_rank:
-    :param customer_product_rank:
-    :param customer_product_list:
-    :param product_neighbors:
-    :return: R_avg, Bu's, Bi's
+    :param data_file: name of file contain the whole data set which is used to train the model row: [p_id,c_id,rank]
+    :param arcs_file: name of file that contains the relations between products  row: [p1,p2]
+    :param test_file: this csv is row [(p,c),-]
+    :param validation_file: used to check the model accuracy used only when work in process row: [p_id,c_id,rank]
+    :param short: for testing create only 1000/10 data dictionaries
+    :return: dictionaries of the data used to predict the rankings
     '''
     with open(data_file, "r") as csv_file:
         reader = csv.DictReader(csv_file)
@@ -86,9 +87,9 @@ def make_dictionaries(data_file,  arcs_file,  test_file, res_file=None, short = 
 
 
     #for training purposes make another (p,c):r dictionary with real results
-    if res_file:
+    if validation_file:
         res_dictionary = {}
-        with open(res_file, "r") as csv_file_r:
+        with open(validation_file, "r") as csv_file_r:
             reader_r = csv.DictReader(csv_file_r)
             ci = 0
             for row in reader_r:
@@ -122,20 +123,24 @@ def make_dictionaries(data_file,  arcs_file,  test_file, res_file=None, short = 
                 rev_neighbors_p2p1[row['Product2_ID']] = [row['Product1_ID']]
     csv_file_2.close()
 
-    return {'r_avg': r_avg,
-            'Bus_dict': Bus_dict,
-            'Bis_dict': Bis_dict,
-            'customer_product_rank': customer_product_rank,
-            'product_customer_rank': product_customer_rank,
-            'test_dict': test_dictionary,
-            'res_dict': res_dictionary,
-            'arcs': neighbors_p1p2,
+    return {'r_avg': r_avg, #average of all rankings
+            'Bus_dict': Bus_dict, #average for every user
+            'Bis_dict': Bis_dict,   #average for every product
+            'customer_product_rank': customer_product_rank, #dictionary of [(c,p):r]
+            'product_customer_rank': product_customer_rank, #dictionary of [(p,p):r]
+            'test_dict': test_dictionary, #dictionary of [(p,c): 0] to put in the predictions
+            'res_dict': res_dictionary, #dictionary of [(p,c): r] for validation
+            'arcs': neighbors_p1p2, #dictionary of lists of similar products
             'rev_arcs': rev_neighbors_p2p1
             }
 
 
 
 class arc_table():
+    '''
+    this class get the arc dictionaties and return for every combination user and product
+    the similarity rank based on frequently bought together products
+    '''
     def __init__(self, c_p_ranks, arcs_dict, rev_arcs_dict):
         self.ranks = c_p_ranks
         self.arcs = arcs_dict
@@ -171,17 +176,18 @@ class arc_table():
 
             a_res = (float(a_sum) / a_num)
             # print "for u:{} and p:{} a_res is: {}".format(u, i,a_res )
-
+        if not (r_res+a_res)/2.0-rvg == 0: print u,i,(r_res+a_res)/2.0-rvg
         return r_res,a_res, (r_res+a_res)/2.0-rvg
 
 
 def base_line(dicts):
 
-    #prediction constants:
-    b0 = 1.1 #coef of r_avg
-    b1 = 1.05 #coef of bu
-    b2 = 0.85 #coef of bi
-    b3 = 0.4 #coef of similarity
+    #prediction constants, calculated by using linear regression:
+    # the output of another program pre calculated[ 1.11085189  1.04354651  0.85812933  0.3491368 ]
+    b0 = 1.11085189 #coef of r_avg
+    b1 = 1.04354651 #coef of bu
+    b2 = 0.85812933 #coef of bi
+    b3 = 0.3491368 #coef of similarity
 
 
     r_avg = dicts['r_avg']
@@ -200,7 +206,6 @@ def base_line(dicts):
         iit += 1
         r = str(iit) + "\r"
         stdout.write(r)
-        #roof_pred = r_roof.get(c_id, p_id)
         bu = 0
         bi = 0
         if c_id in bus:
@@ -216,7 +221,7 @@ def base_line(dicts):
 def print_results(p_c_predictions, target_file):
     with open(target_file, 'w') as write_file:
         writer = csv.writer(write_file, lineterminator='\n')
-        fieldnames2 = ["Proudct_ID", "Customer_ID", "Customer_rank"]
+        fieldnames2 = ["Product_ID", "Customer_ID", "Customer_rank"]
         writer.writerow(fieldnames2)
         # rmse = 0
         row_count = 0
@@ -232,7 +237,7 @@ def print_results(p_c_predictions, target_file):
             writer.writerow([p, c, int(t_pred)])
             row_count +=1
 
-    write_file.close
+    write_file.close()
     return row_count
 
 
@@ -243,8 +248,14 @@ def run_prediction(dicts, target_file):
 
 
 def calc_rmse(my_pred, real_labels):
+    '''
+    given two dictionaries calculate the rmse and evaluate the prediction
+    :param my_pred: name of csv file contains the model predictions
+    :param real_labels: name of csv file contains the real labels
+    :return: RMSE and list of the miss classified entries
+    '''
 
-    c = len(real_labels)
+    test_size = len(real_labels)
     diff_sum = 0
     dbg_list = []
     for (p,c),v in real_labels.items():
@@ -255,10 +266,16 @@ def calc_rmse(my_pred, real_labels):
                              'my_val': my_pred[(p, c)]})
 
         diff_sum += r_diff**2
-    rmses = float(diff_sum) / c
+    rmses = float(diff_sum) / test_size
     return sqrt(rmses), dbg_list
 
 def test_results(pred_file, real_res):
+    '''
+    given two csv files with row [(p,c) rank] calculates the rmse and evaluate the prediction
+    :param pred_file: name of csv file contains the model predictions
+    :param real_res: name of csv file contains the real labels
+    :return: RMSE and list of the miss classified entries
+    '''
     pred_dict = {}
     with open(pred_file,'r') as predictions:
         reader_p = csv.DictReader(predictions)
@@ -284,6 +301,7 @@ def test_results(pred_file, real_res):
 
 
 if __name__ == '__main__':
+
     t1 = datetime.now()
 
     '''get the input from file "P_C_matrix.csv" and "Network_arcs.csv"
@@ -296,20 +314,19 @@ if __name__ == '__main__':
     results_file = "results.csv"
     target_file_name = "EX2.csv"
 
-    pref = raw_input("choose long or short: (L or S)")
-    if pref == "L":
-        short = False
-    elif pref == "S":
-        short = True
+    #for debug:
+    # pref = raw_input("choose long or short: (L or S)")
+    # if pref == "L":
+    #     short = False
+    # elif pref == "S":
+    #     short = True
 
-    all_dicts = make_dictionaries(data_file,  arcs_file,  results_file, None, short )
+    all_dicts = make_dictionaries(data_file,  arcs_file,  results_file, None, short=False)
     run_prediction(all_dicts, target_file_name)
-
 
     real_res_file = ""
     if not real_res_file == "":
         test_results(target_file_name, real_res_file)
-
 
     t2 = datetime.now()
     print (t2 - t1)
