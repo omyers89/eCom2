@@ -1,12 +1,15 @@
 
 
-from datetime import datetime
+# HW2 E-commerce Technion Spring 2016
+# Written by: Omri Myers,        303083638
+#             Amir Wolfensohn,   300339785
+
 import csv
 from sys import stdout
 import numpy as np
 from math import sqrt, fabs
 from datetime import datetime
-from classifier import run_linear_grid, run_linear_grid_rig
+
 
 
 
